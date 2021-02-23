@@ -27,7 +27,7 @@ def load_data():
     """
     Open and return data from ```data.json``` file.
     """
-    with open('../sudokuscraper/data.json', 'r') as f:
+    with open('../sudokuscraper/sudokuscraper/scrapes.json', 'r') as f:
         data=f.read()
 
     training_examples = json.loads(data)
@@ -43,16 +43,22 @@ def create_data_tuples():
     as described above.
     """
     
-    sudokus = [sudoku['puzzle'] for sudoku in load_data()]
+    sudokus = np.array([sudoku['puzzle'] for sudoku in load_data()])
+    solved_sudokus  = copy.deepcopy(sudokus)
+    
+    solved = [Sudoku(sudoku) for sudoku in solved_sudokus]
+    solved = np.array([sudoku.solve() for sudoku in solved])
+    
+    return(sudokus, solved_sudokus)
 
-    solved_sudokus = []
-    for old_sudoku in sudokus:
-        sudoku = copy.deepcopy(old_sudoku)
-        sud = Sudoku(sudoku)
-        solved_sud = sud.solve()
-        solved_sudokus.append(solved_sud)
 
-    return (sudokus, solved_sudokus)
+
+def flatten_sudokus(sudokus):
+    """
+    Input is a list of training examples and output
+    is the same list flattened to 2 dimensions: (m, 81)
+    """
+    return sudokus.reshape(-1, 81)
 
 def write_data_to_file():
     """
@@ -60,21 +66,15 @@ def write_data_to_file():
     in a file, to have at our disposal for use in the
     neural network.
     """
-    with open("sudoku_loader", "w") as f:
-        f.write(str(create_data_tuples()))
+    sudokus, solved_sudokus = create_data_tuples()
+    X = flatten_sudokus(sudokus)
+    Y = flatten_sudokus(solved_sudokus)
 
-def vectorize_data():
-    """
-    For our purposes, it may be useful to have the data
-    represented as an n*1 dimensional vector. This function
-    converts the tuple from ```create_data_tuple()``` into that 
-    """
+    np.savetxt('./inputs.csv', X, delimiter=',')
+    np.savetxt('./outputs.csv', Y, delimiter=',')
 
-    data_tuples = create_data_tuples()
-    
-    unsolved_vectors, solved_vectors = reshape_sudokus(data_tuples[0]), reshape_sudokus(data_tuples[1])
 
-    return (unsolved_vectors, solved_vectors)
 
-def reshape_sudokus(sudokus):
-    return [np.reshape(sudoku, (81, 1)) for sudoku in sudokus]
+
+if __name__ == '__main__':
+    write_data_to_file()
